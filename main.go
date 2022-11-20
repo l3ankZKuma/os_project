@@ -124,7 +124,7 @@ func loadApiConfig(filename string) (apiConfigData, error) {
 func hello(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("hello from go!\n"))
 }
-func queryForcast(city string) (forecastData, error) {
+func queryForecast(city string) (forecastData, error) {
 	apiConfig, err := loadApiConfig(".apiConfig")
 	if err != nil {
 		return forecastData{}, err
@@ -169,51 +169,46 @@ func init() {
 	tmp1 = template.Must(template.ParseGlob("templates/*.html"))
 }
 func main() {
-	// fs := http.FileServer(http.Dir("assets"))
-
+	var tmp string
 	http.HandleFunc("/",
 		func(w http.ResponseWriter, r *http.Request) {
 			tmp1.ExecuteTemplate(w, "main.html", nil)
-		})
-	// http.Handle("/assets/", http.StripPrefix("/assets", fs))
-	http.HandleFunc("/weather/",
-		func(w http.ResponseWriter, r *http.Request) {
-			city := strings.SplitN(r.URL.Path, "/", 3)[2]
-			data, err := queryWeather(city)
-			dataForecast, _ := queryForcast(city)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			//w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			//json.NewEncoder(w).Encode(data)
-			web_icon := " http://openweathermap.org/img/wn/" + data.Weather[0].Icon + "@2x.png"
-			web_icon1 := " http://openweathermap.org/img/wn/" + dataForecast.List[8].Weather[0].Icon + "@2x.png"
-			web_icon2 := " http://openweathermap.org/img/wn/" + dataForecast.List[16].Weather[0].Icon + "@2x.png"
-			web_icon3 := " http://openweathermap.org/img/wn/" + dataForecast.List[24].Weather[0].Icon + "@2x.png"
-			web_icon4 := " http://openweathermap.org/img/wn/" + dataForecast.List[32].Weather[0].Icon + "@2x.png"
+			r.ParseForm()
+			for _, v := range r.Form {
+				tmp = strings.Join(v, "")
+				dataForecast, err := queryForecast(tmp)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				web_icon := " http://openweathermap.org/img/wn/" + dataForecast.List[0].Weather[0].Icon + "@2x.png"
+				web_icon1 := " http://openweathermap.org/img/wn/" + dataForecast.List[8].Weather[0].Icon + "@2x.png"
+				web_icon2 := " http://openweathermap.org/img/wn/" + dataForecast.List[16].Weather[0].Icon + "@2x.png"
+				web_icon3 := " http://openweathermap.org/img/wn/" + dataForecast.List[24].Weather[0].Icon + "@2x.png"
+				web_icon4 := " http://openweathermap.org/img/wn/" + dataForecast.List[32].Weather[0].Icon + "@2x.png"
 
-			p := page{Header: data.Name, Temp: data.Main.Celcius,
-				Long: data.Coord.Lon, Lat: data.Coord.Lat,
-				Describe:  data.Weather[0].Description,
-				Icon:      web_icon,
-				Humidity:  data.Main.Humidity,
-				DtTxt1:    dataForecast.List[8].DtTxt[:11],
-				DtTxt2:    dataForecast.List[16].DtTxt[:11],
-				DtTxt3:    dataForecast.List[24].DtTxt[:11],
-				DtTxt4:    dataForecast.List[32].DtTxt[:11],
-				Icon1:     web_icon1,
-				Icon2:     web_icon2,
-				Icon3:     web_icon3,
-				Icon4:     web_icon4,
-				Describe1: dataForecast.List[8].Weather[0].Description,
-				Describe2: dataForecast.List[16].Weather[0].Description,
-				Describe3: dataForecast.List[24].Weather[0].Description,
-				Describe4: dataForecast.List[32].Weather[0].Description,
+				p := page{Header: tmp, Temp: dataForecast.List[0].Main.Temp,
+					Describe:  dataForecast.List[0].Weather[0].Description,
+					Icon:      web_icon,
+					Humidity:  dataForecast.List[0].Main.Humidity,
+					DtTxt1:    dataForecast.List[8].DtTxt[:11],
+					DtTxt2:    dataForecast.List[16].DtTxt[:11],
+					DtTxt3:    dataForecast.List[24].DtTxt[:11],
+					DtTxt4:    dataForecast.List[32].DtTxt[:11],
+					Icon1:     web_icon1,
+					Icon2:     web_icon2,
+					Icon3:     web_icon3,
+					Icon4:     web_icon4,
+					Describe1: dataForecast.List[8].Weather[0].Description,
+					Describe2: dataForecast.List[16].Weather[0].Description,
+					Describe3: dataForecast.List[24].Weather[0].Description,
+					Describe4: dataForecast.List[32].Weather[0].Description,
+				}
+				t, err := template.ParseFiles("templates/weather.html")
+				fmt.Print(err)
+				t.Execute(w, p)
 			}
-			t, err := template.ParseFiles("templates/weather.html")
-			fmt.Print(err)
-			t.Execute(w, p)
+
 		})
 
 	http.ListenAndServe(":8080", nil)
